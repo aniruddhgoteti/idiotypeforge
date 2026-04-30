@@ -46,12 +46,23 @@ import click
 @click.option("--epochs", type=int, default=1)
 @click.option("--lr", type=float, default=2e-4)
 @click.option("--seq-len", type=int, default=1024)
-@click.option("--batch-size", type=int, default=4)
-@click.option("--grad-accum", type=int, default=4)
+# L4-tuned defaults: batch_size=8 fits comfortably in 24 GB at seq_len=1024
+# with 4-bit base + bf16 LoRA + FA2 + grad checkpointing. grad_accum=2 keeps
+# effective batch at 16 — same effective LR as the previous (4 × 4) config.
+@click.option("--batch-size", type=int, default=8,
+              help="Per-device train batch size. 8 = L4 24GB sweet spot; 16 = A100 40GB.")
+@click.option("--grad-accum", type=int, default=2)
 @click.option("--lora-r", type=int, default=16)
 @click.option("--lora-alpha", type=int, default=32)
+# Packing concatenates multiple short antibody sequences (~110 aa each) into
+# one seq_len-token block per training example. With seq_len=1024 we fit
+# ~9 antibodies per example, giving ~9× sample throughput vs naive padding.
+@click.option("--packing/--no-packing", default=True,
+              help="Pack multiple short antibody seqs into one seq_len block (~9× throughput).")
+@click.option("--num-workers", type=int, default=4,
+              help="DataLoader workers. 4 keeps the GPU fed on L4.")
 @click.option("--max-sequences", type=int, default=200_000,
-              help="Cap on training sequences (200K = ~3-5 hrs on A100).")
+              help="Cap on training sequences (200K = ~3-5 hrs A100, ~6 hrs L4).")
 @click.option("--push-to-hub/--no-push", default=False)
 @click.option("--hub-id", default=None,
               help="HF Hub repo id (e.g. user/idiotypeforge-gemma4-e4b-ab-lora).")
@@ -66,6 +77,8 @@ def main(
     grad_accum: int,
     lora_r: int,
     lora_alpha: int,
+    packing: bool,
+    num_workers: int,
     max_sequences: int,
     push_to_hub: bool,
     hub_id: str | None,
@@ -166,6 +179,9 @@ def main(
         eval_dataset=eval_ds,
         dataset_text_field="text",
         max_seq_length=seq_len,
+        # Packing concatenates multiple short antibody sequences (~110 aa)
+        # per training example up to seq_len, ~9× sample throughput.
+        packing=packing,
         args=SFTConfig(
             output_dir=str(out / "checkpoints"),
             num_train_epochs=epochs,
@@ -179,10 +195,18 @@ def main(
             save_steps=500,
             save_total_limit=2,
             eval_steps=500,
+            # Mixed precision — Unsloth picks the right one based on GPU caps;
+            # L4 / A100 both support BF16, T4 falls back to FP16.
             fp16=not torch.cuda.is_bf16_supported(),
             bf16=torch.cuda.is_bf16_supported(),
             seed=42,
             report_to=[],
+            # Keep the GPU fed: 4 dataloader workers, pin memory so transfers
+            # overlap with compute. group_by_length avoids padding waste when
+            # packing is off.
+            dataloader_num_workers=num_workers,
+            dataloader_pin_memory=True,
+            group_by_length=not packing,
         ),
     )
     train_result = trainer.train()

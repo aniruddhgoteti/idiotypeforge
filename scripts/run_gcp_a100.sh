@@ -51,6 +51,63 @@ fi
 source .venv/bin/activate
 
 # ---------------------------------------------------------------------------
+# GPU monitoring — start an nvidia-smi sampling loop in the background that
+# writes a CSV every 5 s for the duration of the workload. Used to verify we
+# actually hit ~85-95% utilisation; auditable after the fact.
+# ---------------------------------------------------------------------------
+GPU_LOG_DIR="runs/gpu_monitoring"
+mkdir -p "$GPU_LOG_DIR"
+GPU_LOG="${GPU_LOG_DIR}/$(date +%Y%m%d-%H%M%S)-nvsmi.csv"
+
+start_gpu_monitor() {
+  if ! command -v nvidia-smi >/dev/null 2>&1; then
+    echo "! nvidia-smi not found; skipping GPU monitoring."
+    return
+  fi
+  echo "→ Starting nvidia-smi monitor → $GPU_LOG (5 s sampling)"
+  nvidia-smi \
+      --query-gpu=timestamp,name,utilization.gpu,utilization.memory,memory.used,memory.total,power.draw,temperature.gpu \
+      --format=csv \
+      -l 5 \
+      > "$GPU_LOG" 2>&1 &
+  GPU_MON_PID=$!
+  trap 'kill $GPU_MON_PID 2>/dev/null || true' EXIT
+}
+
+print_gpu_summary() {
+  if [ ! -f "$GPU_LOG" ] || [ ! -s "$GPU_LOG" ]; then
+    return
+  fi
+  python3 - "$GPU_LOG" <<'PYSUM'
+import csv, sys, statistics
+path = sys.argv[1]
+util_vals = []
+with open(path) as fh:
+    rdr = csv.reader(fh)
+    next(rdr, None)  # header
+    for row in rdr:
+        if len(row) < 3:
+            continue
+        try:
+            util = float(row[2].strip().rstrip("%"))
+            util_vals.append(util)
+        except ValueError:
+            pass
+if not util_vals:
+    print("  (no samples)")
+    sys.exit(0)
+n = len(util_vals)
+avg = statistics.mean(util_vals)
+p50 = statistics.median(util_vals)
+above_80 = sum(1 for v in util_vals if v >= 80) / n * 100
+print(f"  samples:     {n} (~{n*5/60:.1f} min wallclock)")
+print(f"  GPU util:    avg={avg:.1f}%  p50={p50:.1f}%  ≥80%: {above_80:.1f}% of time")
+PYSUM
+}
+
+start_gpu_monitor
+
+# ---------------------------------------------------------------------------
 # Subcommand: fixtures (Day 13)
 # ---------------------------------------------------------------------------
 run_fixtures() {
@@ -133,7 +190,11 @@ esac
 
 echo
 echo "━━━ Done ━━━"
+echo
+echo "→ GPU utilisation summary (from $GPU_LOG):"
+print_gpu_summary
+echo
 echo "Push results back to git from your laptop:"
 echo "    cd ~/idiotypeforge"
-echo "    git pull && git add data/demo_cases runs/ && git commit -m 'A100 outputs'"
+echo "    git pull && git add data/demo_cases runs/ && git commit -m 'GPU outputs'"
 echo "    git push"

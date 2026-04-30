@@ -184,7 +184,7 @@ def test_template_mode_emits_a_tool_call_for_each_pipeline_step(monkeypatch: pyt
         "score_cdr_liabilities",
         "predict_mhc_epitopes",
         "design_binder",
-        "rescore_complex",
+        "rescore_complex_batch",   # batched call instead of per-candidate
         "offtarget_search",
         "assemble_car_construct",
         "estimate_doses",

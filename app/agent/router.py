@@ -35,17 +35,21 @@ logger = logging.getLogger(__name__)
 # Registry
 # ---------------------------------------------------------------------------
 _TOOLS: dict[str, tuple[Callable[..., Any], dict[str, Any]]] = {
-    "number_antibody":      (number_antibody.run,      number_antibody.SCHEMA),
-    "predict_fv_structure": (igfold_predict.run,       igfold_predict.SCHEMA),
-    "score_cdr_liabilities":(cdr_liabilities.run,      cdr_liabilities.SCHEMA),
-    "predict_mhc_epitopes": (mhcflurry_predict.run,    mhcflurry_predict.SCHEMA),
-    "design_binder":        (rfdiffusion_design.run,   rfdiffusion_design.SCHEMA),
-    "rescore_complex":      (rescore_complex.run,      rescore_complex.SCHEMA),
-    "offtarget_search":     (offtarget_search.run,     offtarget_search.SCHEMA),
-    "assemble_car_construct":(car_assembler.run,       car_assembler.SCHEMA),
-    "render_structure":     (render_structure.run,     render_structure.SCHEMA),
-    "estimate_doses":       (dose_estimator.run,       dose_estimator.SCHEMA),
-    "compose_dossier":      (compose_dossier.run,      compose_dossier.SCHEMA),
+    "number_antibody":       (number_antibody.run,       number_antibody.SCHEMA),
+    "predict_fv_structure":  (igfold_predict.run,        igfold_predict.SCHEMA),
+    "score_cdr_liabilities": (cdr_liabilities.run,       cdr_liabilities.SCHEMA),
+    "predict_mhc_epitopes":  (mhcflurry_predict.run,     mhcflurry_predict.SCHEMA),
+    "design_binder":         (rfdiffusion_design.run,    rfdiffusion_design.SCHEMA),
+    "rescore_complex":       (rescore_complex.run,       rescore_complex.SCHEMA),
+    # Batched variant: 1 ColabFold call for N candidates. Used by the
+    # orchestrator on GPU to keep utilisation high; the agent in template
+    # mode also calls this to amortise model-load overhead.
+    "rescore_complex_batch": (rescore_complex.run_batch, rescore_complex.SCHEMA_BATCH),
+    "offtarget_search":      (offtarget_search.run,      offtarget_search.SCHEMA),
+    "assemble_car_construct":(car_assembler.run,         car_assembler.SCHEMA),
+    "render_structure":      (render_structure.run,      render_structure.SCHEMA),
+    "estimate_doses":        (dose_estimator.run,        dose_estimator.SCHEMA),
+    "compose_dossier":       (compose_dossier.run,       compose_dossier.SCHEMA),
 }
 
 

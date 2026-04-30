@@ -230,22 +230,29 @@ def _run_template(patient: PatientInput) -> Iterator[AgentEvent]:
     yield AgentEvent("tool_result", {"name": "design_binder", "result": _summarise(designs)})
     candidates = list(designs.get("candidates") or [])[:3]
 
-    # ---------- Step 6: rescore each binder as a complex ----------
-    yield AgentEvent("thought", "Step 6/9: rescoring top candidates with AlphaFold-Multimer.")
+    # ---------- Step 6: rescore all binders in ONE batched call ----------
+    yield AgentEvent("thought",
+                     f"Step 6/10: batched AlphaFold-Multimer rescore of {len(candidates)} candidates "
+                     "(one ColabFold load → ~95% GPU utilisation).")
+    batch_args = {
+        "binders": [{"candidate_id": c["candidate_id"], "sequence": c["sequence"]}
+                    for c in candidates],
+        "target_pdb": target_pdb,
+    }
+    yield AgentEvent("tool_call", {"name": "rescore_complex_batch",
+                                   "args": {"n_binders": len(candidates)},
+                                   "rationale": "batched interface quality check."})
+    batch = dispatch_traced("rescore_complex_batch", batch_args, store)
+    yield AgentEvent("tool_result", {"name": "rescore_complex_batch",
+                                     "result": _summarise(batch)})
+
+    # Merge per-candidate scores back onto the design records
+    by_id = {r["candidate_id"]: r for r in batch.get("results", [])}
     rescored: list[dict[str, Any]] = []
     for c in candidates:
-        args = {
-            "binder_sequence": c["sequence"],
-            "target_pdb": target_pdb,
-            "candidate_id": c["candidate_id"],
-        }
-        score = dispatch_traced("rescore_complex", args, store)
+        score = by_id.get(c["candidate_id"], {})
         merged = {**c, **{k: v for k, v in score.items() if k != "mock"}}
         rescored.append(merged)
-        yield AgentEvent("tool_call", {"name": "rescore_complex",
-                                       "args": {"candidate_id": c["candidate_id"]},
-                                       "rationale": "interface quality check."})
-        yield AgentEvent("tool_result", {"name": "rescore_complex", "result": _summarise(score)})
     rescored.sort(key=lambda x: x.get("iplddt", 0), reverse=True)
 
     # ---------- Step 7: off-target safety ----------

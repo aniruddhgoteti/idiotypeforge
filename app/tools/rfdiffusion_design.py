@@ -137,7 +137,10 @@ def _run_real_rfdiffusion(
                 f"{result.stderr[-500:]}"
             )
 
-        # ProteinMPNN over each scaffold
+        # ProteinMPNN over ALL scaffolds in a single batched call. The
+        # ProteinMPNN CLI accepts a directory of PDBs and processes them
+        # back-to-back without reloading the model between calls — the GPU
+        # stays hot from the first scaffold to the last.
         scaffolds = sorted(tmp_path.glob("design_*.pdb"))
         if not scaffolds:
             raise RuntimeError(
@@ -145,9 +148,13 @@ def _run_real_rfdiffusion(
                 f"{result.stdout[-300:]}"
             )
 
+        seq_by_path = _run_proteinmpnn_batch(scaffolds, tmp_path / "mpnn_out")
+
         candidates: list[dict[str, Any]] = []
         for i, scaffold_path in enumerate(scaffolds):
-            seq, logprob = _run_proteinmpnn(scaffold_path)
+            seq, logprob = seq_by_path.get(scaffold_path.name, ("", -10.0))
+            if not seq:
+                continue
             candidates.append({
                 "candidate_id": f"design_{i:03d}",
                 "sequence": seq,
@@ -165,6 +172,98 @@ def _run_real_rfdiffusion(
         "mock": False,
         "n_designs_requested": n_designs,
     }
+
+
+def _run_proteinmpnn_batch(
+    scaffold_pdbs: "list[Path]",
+    out_dir: "Path",
+) -> "dict[str, tuple[str, float]]":
+    """Run ProteinMPNN on a directory of scaffold PDBs in ONE process.
+
+    ProteinMPNN's helper script `protein_mpnn_run.py` takes a parsed-chain
+    JSONL and processes all entries with a single GPU model load. Returns
+    `{scaffold_basename: (sequence, mean_logprob)}`.
+    """
+    import json
+    import os
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    pmpnn_dir = Path(os.environ.get("PROTEINMPNN_DIR", "/opt/ProteinMPNN"))
+    parser = pmpnn_dir / "helper_scripts" / "parse_multiple_chains.py"
+    runner = pmpnn_dir / "protein_mpnn_run.py"
+    if not runner.exists():
+        raise RuntimeError(
+            f"ProteinMPNN not found at {runner}. Set PROTEINMPNN_DIR or "
+            "run scripts/setup_a100.sh."
+        )
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    pdbs_dir = out_dir / "pdbs"
+    pdbs_dir.mkdir(exist_ok=True)
+    for s in scaffold_pdbs:
+        shutil.copy(s, pdbs_dir / s.name)
+
+    # 1. Parse all PDBs into a single JSONL
+    parsed_jsonl = out_dir / "parsed.jsonl"
+    subprocess.run(
+        ["python", str(parser),
+         "--input_path", str(pdbs_dir),
+         "--output_path", str(parsed_jsonl)],
+        check=True, capture_output=True,
+    )
+
+    # 2. Run ProteinMPNN once over the whole batch
+    result = subprocess.run(
+        ["python", str(runner),
+         "--jsonl_path", str(parsed_jsonl),
+         "--out_folder", str(out_dir),
+         "--num_seq_per_target", "1",
+         "--sampling_temp", "0.1",
+         "--seed", "42",
+         "--batch_size", "1"],
+        capture_output=True, text=True, timeout=1800,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"ProteinMPNN batch run failed (rc={result.returncode}): "
+            f"{result.stderr[-500:]}"
+        )
+
+    # 3. Parse the per-scaffold FASTAs ProteinMPNN drops in seqs/
+    seqs_dir = out_dir / "seqs"
+    out: dict[str, tuple[str, float]] = {}
+    if not seqs_dir.exists():
+        return out
+    for fa in seqs_dir.glob("*.fa"):
+        # ProteinMPNN's FASTA format: header line includes "score=X.XX"
+        text = fa.read_text().splitlines()
+        seq_lines: list[str] = []
+        last_score = -10.0
+        cur_seq: list[str] = []
+        for line in text:
+            if line.startswith(">"):
+                if cur_seq:
+                    seq_lines.append("".join(cur_seq))
+                    cur_seq = []
+                # Pull score field (negative log-prob; we negate to logprob)
+                for tok in line.split(","):
+                    tok = tok.strip()
+                    if tok.startswith("score="):
+                        try:
+                            last_score = -float(tok.split("=", 1)[1])
+                        except ValueError:
+                            pass
+            else:
+                cur_seq.append(line.strip())
+        if cur_seq:
+            seq_lines.append("".join(cur_seq))
+        # Use the last (designed, not native) sequence
+        if len(seq_lines) >= 2:
+            designed_seq = seq_lines[1]
+            out[fa.stem + ".pdb"] = (designed_seq, last_score)
+    return out
 
 
 def _run_proteinmpnn(scaffold_pdb: Path) -> tuple[str, float]:

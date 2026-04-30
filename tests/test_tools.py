@@ -26,6 +26,7 @@ def test_router_lists_all_tools() -> None:
         "predict_mhc_epitopes",
         "design_binder",
         "rescore_complex",
+        "rescore_complex_batch",   # batched ColabFold call (GPU util)
         "offtarget_search",
         "assemble_car_construct",
         "render_structure",
