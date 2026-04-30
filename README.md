@@ -10,13 +10,30 @@
 
 ---
 
-## A note for anyone who has ever heard the words "you have lymphoma"
+## Who this is for
 
-Lymphoma is a family of cancers — Hodgkin and non-Hodgkin — that begin in the white blood cells called lymphocytes. The treatments are remarkable when they work: ABVD, DHAP, GVD, BEACOPP, R-CHOP, pembrolizumab, autologous stem cell transplant, CAR-T. They have saved hundreds of thousands of lives. They are also, as anyone who has been through them knows, brutal.
+In the United States, a Hodgkin lymphoma patient diagnosed in 2024 has a roughly **88 % five-year survival rate**. They will be offered ABVD, escalated BEACOPP, brentuximab-AVD, salvage DHAP or ICE, pembrolizumab combinations, autologous stem cell transplant, sometimes CAR-T. The treatments are gruelling, but the menu is long, and the outcomes are reasonable.
 
-This project does not replace any of those treatments. It targets a specific, decades-old gap in **B-cell non-Hodgkin lymphoma** care: every patient's tumor carries a perfect, patient-unique target on its surface, and we have known this since the 1980s — but we have never been able to design and manufacture a custom drug per patient fast enough or cheaply enough to use it.
+This project is not for those patients. It is for the people one or two doors down the ward. The people on the other end of the survival curve.
 
-The goal of IdiotypeForge is to close that gap by collapsing the *design* step from six months to under two hours, using AI tools that did not exist three years ago. The biology was always right. The logistics killed it. We can fix the logistics now.
+| Population | 5-year survival | What's missing |
+|---|---|---|
+| Peripheral T-cell lymphoma (PTCL-NOS) | **~ 30 %** | Almost no targeted therapy; treated with a 1970s B-cell regimen |
+| Adult T-cell leukaemia/lymphoma (ATLL) | **< 20 %** | Endemic in regions with the lowest oncology budgets |
+| Primary CNS lymphoma | **~ 30 %** | Most CAR-T and bispecifics don't cross the blood-brain barrier |
+| Relapsed/refractory DLBCL after CAR-T | median OS **~ 6 months** | CD19 escape; no good next-line target |
+| Richter transformation (CLL → DLBCL) | median OS **6–12 months** | No reliable targeted therapy |
+| Double-hit / triple-hit lymphoma | 5-yr OS **~ 30 %** | MYC + BCL2 are still considered undruggable |
+| Burkitt lymphoma in low-resource settings | **< 30 %** in sub-Saharan Africa, **vs > 85 %** in high-income countries | Same biology, different ZIP code |
+| Any lymphoma patient in a country without CAR-T infrastructure | varies | Personalised therapy is geographically locked |
+
+Standard care, where it exists, is among the great triumphs of modern medicine. But it is not evenly distributed across subtypes, across treatment lines, or across the planet.
+
+IdiotypeForge is built on the bet that **personalised lymphoma therapy should not require a $475 000 CAR-T infrastructure or a six-month design cycle**. The biology of patient-specific targeting was understood in 1985. The reason it never reached the people who needed it most was logistics — manufacturing time and cost. Five technologies that didn't exist three years ago (AlphaFold/IgFold, RFdiffusion, post-COVID mRNA-LNP manufacturing, the Observed Antibody Space, and tool-calling LLMs like Gemma 4) collectively make those logistics breakable in 2026.
+
+This project does not replace ABVD, R-CHOP, CAR-T, or pembrolizumab. It is for the gap those treatments cannot reach: **the patient with a poor-prognosis subtype, in a low-resource setting, after standard therapy has run out**. It runs on a single laptop, behind a hospital firewall, with no cloud dependency. The patient's biopsy data never leaves the building.
+
+If we are right, the same wall that protected the lucky also condemned the unlucky. Breaking it is the point.
 
 ---
 
@@ -220,7 +237,7 @@ It is a **research demo** showing that a path from biopsy to personalized therap
 
 ## Hackathon submission
 
-Built for the [Kaggle Gemma 4 Good Hackathon](https://www.kaggle.com/competitions/gemma-4-good-hackathon). Tracks: Main · Health & Sciences · Unsloth fine-tuning. Deadline: 18 May 2026.
+Built for the [Kaggle Gemma 4 Good Hackathon](https://www.kaggle.com/competitions/gemma-4-good-hackathon). Tracks: Main · Health & Sciences · Digital Equity & Inclusivity · Unsloth fine-tuning. Deadline: 18 May 2026.
 
 Final deliverables (rolling):
 
@@ -240,6 +257,8 @@ Creative Commons Attribution 4.0 International (CC BY 4.0). See [LICENSE](LICENS
 
 ## Acknowledgements
 
-To everyone who has ever sat in a chemo chair, an MRI tube, or a transplant ward — and to everyone who has held their hand. To the BiovaxID and FavId teams who saw this idea three decades early and were defeated by the manufacturing economics of their era. To the open-source biology community — David Baker's lab (RFdiffusion, ProteinMPNN), DeepMind (AlphaFold, Gemma), Charlotte Deane's lab (ANARCI, OAS), Jeffrey Gray's lab (IgFold), Tim O'Donnell (MHCflurry) — without whose freely-released tools none of this would exist.
+To the BiovaxID, FavId, and MyVax teams who saw this idea three decades early and were defeated by the manufacturing economics of their era — they were right.
 
-If you or someone you love is in treatment right now: this project is for you, even if the immediate payoff is years away. The point is that the wall is finally breakable.
+To the open-source biology community — David Baker's lab (RFdiffusion, ProteinMPNN), DeepMind (AlphaFold, Gemma), Charlotte Deane's lab (ANARCI, OAS), Jeffrey Gray's lab (IgFold), Tim O'Donnell (MHCflurry) — without whose freely-released tools none of this would exist. Open weights and open data are the precondition for global oncology.
+
+To the patients in PTCL clinics, in CNS-lymphoma trials, in second relapse after CAR-T, in Lagos and Lusaka and Lima — for whom standard care was not enough or never arrived. The point of this project is for the wall to be broken on your side of it, not on the side that already had options.

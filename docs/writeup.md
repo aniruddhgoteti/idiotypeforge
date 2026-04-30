@@ -14,11 +14,11 @@ A Gemma 4 agent collapses personalized cancer therapy design from six months to 
 
 ## 1. The problem (50 words)
 
-Every B-cell non-Hodgkin lymphoma patient carries the most tumor-specific antigen in oncology — their tumor's own B-cell receptor (BCR), known as the *idiotype*. It is on every cancer cell, on almost no healthy cell, and the cancer cannot mutate away from it without dying.
+Standard lymphoma care is uneven: 88 % five-year survival in well-resourced Hodgkin patients vs ~30 % in PTCL, <20 % in ATLL, ~30 % in primary CNS, ~6 months median OS post-CAR-T relapse, <30 % Burkitt survival in sub-Saharan Africa. Personalised therapy exists — for the lucky. This project is for everyone else.
 
-## 2. Why BiovaxID failed (150 words)
+## 2. Why BiovaxID failed — and why that failure is an equity story (150 words)
 
-[TODO: BiovaxID, FavId, MyVax 2009–2011 — biology was right, manufacturing logistics killed it. 3–6-month per-patient turnaround, $100K+ cost, trial design enrolled patients in remission. Cite Schuster2011, Levy2014.]
+[TODO: BiovaxID, FavId, MyVax 2009–2011 — biology was right, manufacturing logistics killed it. 3–6-month per-patient turnaround, $100K+ cost, trial design enrolled patients in remission. Cite Schuster2011, Levy2014. **Crucial framing**: the $100K+ price tag and 6-month timeline didn't just kill the trials — they pre-emptively excluded every healthcare system that couldn't absorb that. The wall protected the lucky and condemned the unlucky. Breaking it has to be cheap and local, or it isn't broken at all.]
 
 ## 3. The five-tech wall now broken (200 words)
 
@@ -36,13 +36,13 @@ Every B-cell non-Hodgkin lymphoma patient carries the most tumor-specific antige
 
 [TODO: comparison table from plan §6 — ibrutinib chronic suppression cost / CD19 CAR-T escape rate / BiovaxID 6-month baseline / IdiotypeForge target. Insert per-case wallclock numbers from notebooks/02_benchmarks.ipynb.]
 
-## 7. Gemma 4 specifics (200 words)
+## 7. Gemma 4 + the access argument (200 words)
 
-[TODO: function calling × 9 tools, multimodal × 3 structure views per case, long context for dossier, Unsloth QLoRA fine-tune on OAS + 30% perplexity reduction, on-prem via Ollama (PHI argument), why closed models can't do this.]
+[TODO: function calling × 9 tools, multimodal × 3 structure views per case, long context for dossier, Unsloth QLoRA fine-tune on OAS + 30% perplexity reduction. **Lean hard on on-prem via Ollama**: closed APIs can't be deployed behind hospital firewalls in jurisdictions without HIPAA-equivalent or where bandwidth is the bottleneck. Show the LiteRT/llama.cpp story for sub-A100 GPUs. The whole point of building on open weights is that a haematology unit in Kampala or Manila can run this without a cloud bill.]
 
 ## 8. Limitations and what comes next (100 words)
 
-[TODO: research artifact disclaimer. Wet-lab validation required. HLA coverage limited to supplied alleles. Mock vs. real GPU runs noted in dossier. Manufacturing handoff to mRNA-LNP / scFv expression partners. Regulatory framework: FDA platform designation precedent.]
+[TODO: research artifact disclaimer. Wet-lab validation required. HLA coverage limited to supplied alleles. Mock vs. real GPU runs noted in dossier. Manufacturing handoff to mRNA-LNP / scFv expression partners. Regulatory framework: FDA platform designation precedent. **Equity roadmap**: which collaborators (PTCL trials, African Burkitt cohorts, primary CNS lymphoma networks) we'd hand this to first.]
 
 ---
 
