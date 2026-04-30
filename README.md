@@ -84,37 +84,13 @@ A real clinician would still review and approve everything. This is a **research
 
 ---
 
-## How it works under the hood (one diagram)
+## How it works under the hood
 
-```
-       Patient BCR sequence (VH + VL)
-                   │
-                   ▼
-       ┌──────── Gemma 4 ────────┐
-       │  multimodal LLM agent   │
-       │  with native tool use   │
-       └──────────┬──────────────┘
-                  │
-   ┌──────────────┼─────────────────────┐
-   ▼              ▼                     ▼
-ANARCI       IgFold (CPU/GPU)      AbLang2
-numbering    structure prediction  embeddings
-   │              │                     │
-   └──────────────┼─────────────────────┘
-                  ▼
-      ┌──────── targeting ────────┐
-      │   MHCflurry: epitopes     │  → mRNA peptides
-      │   RFdiffusion + ProteinMPNN: binders │  → bispecifics / CAR scFv
-      └──────────────┬────────────┘
-                     ▼
-       AlphaFold-Multimer rescore  →  ipLDDT, iPAE, calibrated P(binder)
-                     ▼
-       MMseqs2 + BLAST off-target  →  safety against healthy human Ig + proteome
-                     ▼
-       CAR-T construct assembler   →  4-1BBz cassette ready for synthesis
-                     ▼
-       Gemma 4 dossier composition →  decision cards + citations
-```
+![IdiotypeForge architecture](docs/architecture.png)
+
+> The full editable source is in [`docs/architecture.excalidraw`](docs/architecture.excalidraw). To tweak it, drop the file into [excalidraw.com](https://excalidraw.com) (or use the Excalidraw VS Code extension), edit, and re-export to `docs/architecture.png` and `docs/architecture.svg`.
+
+The patient's BCR enters at the top. Gemma 4 (the orange box) reads it and decides which of the nine deterministic tools (blue) to call in what order. Every tool output passes through five verification gates (red) — including the **ProvenanceGate** that catches any hallucinated number — before reaching the final dossier (green) and the four downstream deliverables (purple).
 
 Every box on that diagram is open-source software. The whole thing runs on your machine with `ollama pull gemma:4e4b`. Patient sequences never leave your laptop.
 
