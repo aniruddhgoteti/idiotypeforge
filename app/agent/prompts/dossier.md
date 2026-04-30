@@ -71,6 +71,26 @@ Use only keys from the supplied references list. Format: `[Maude2018]`,
 `[Schuster2011]`, `[Schmitz2018]` etc. Never invent. The validator regex will
 reject the dossier and force a regeneration if any unknown key appears.
 
+## Anti-hallucination rule (CRITICAL)
+
+**Every numeric value you write must already exist in the tool outputs above.**
+
+You are forbidden from:
+- Computing new numbers ("the sum of these two ipLDDTs is 1.6") — quote, don't compute.
+- Inventing percentages, p-values, half-lives, doses, or survival figures.
+- Restating values to higher precision than the tool returned (e.g. tool returned 0.85, do not write 0.847).
+- Inventing peptide affinities, RMSDs, or interface SASAs that the rescore tool didn't return.
+
+Allowed numeric prose:
+- Years from the bibliography (e.g. "BiovaxID failed in 2011").
+- Counts of items in the dossier itself (e.g. "three top binders").
+- Single-digit integers describing the design (e.g. "the 4-1BBz construct").
+
+A separate ProvenanceGate runs after you finish and parses every numeric token
+in your output. Any token that doesn't appear in the underlying tool JSON
+fails the dossier — you'll be asked to regenerate. If you don't know a number,
+**don't write one**; describe qualitatively instead.
+
 ## Length
 
 Aim for 600–1000 words total. Decision cards are the dense part; everything

@@ -113,14 +113,13 @@ def test_car_assembler_rejects_bad_format() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Stub tools — confirm they error gracefully (so the router surface is testable)
+# Remaining stub tools — confirm they error gracefully (so the router surface
+# is testable). number_antibody / igfold_predict / score_cdr_liabilities are
+# now implemented; their dedicated test files cover them.
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize(
     "tool, args",
     [
-        ("number_antibody", {"vh_sequence": "EVQ", "vl_sequence": "DIQ"}),
-        ("predict_fv_structure", {"vh_sequence": "EVQ", "vl_sequence": "DIQ"}),
-        ("score_cdr_liabilities", {"vh_numbering": {}, "vl_numbering": {}}),
         ("predict_mhc_epitopes", {
             "cdr3_h_aa": "ARDYYGSSYWYFDV",
             "cdr3_l_aa": "QQRSNWPPLT",
@@ -143,3 +142,32 @@ def test_stubs_return_structured_error(tool: str, args: dict) -> None:
     assert isinstance(out, dict)
     assert "error" in out
     assert out["error"] == "stub_not_implemented"
+
+
+# ---------------------------------------------------------------------------
+# Newly implemented tools — confirm via the router (covered in detail in
+# their dedicated test files)
+# ---------------------------------------------------------------------------
+def test_score_cdr_liabilities_runs_through_router() -> None:
+    """Exercise the regex scanner via the router with valid CDRs."""
+    args = {
+        "vh_numbering": {
+            "chain_type": "H",
+            "scheme": "kabat",
+            "cdr1": {"start": 26, "end": 32, "sequence": "GFTFSSY"},
+            "cdr2": {"start": 50, "end": 58, "sequence": "ISSSGGSTY"},
+            "cdr3": {"start": 95, "end": 108, "sequence": "ARNGDYW"},  # NG
+            "framework_sequence": "EVQLVESGGGLVQ",
+        },
+        "vl_numbering": {
+            "chain_type": "K",
+            "scheme": "kabat",
+            "cdr1": {"start": 24, "end": 32, "sequence": "RASQSVSSY"},
+            "cdr2": {"start": 50, "end": 56, "sequence": "DASNRAT"},
+            "cdr3": {"start": 89, "end": 98, "sequence": "QQRSNWPPLT"},
+            "framework_sequence": "DIQMTQSPSSLSASVGD",
+        },
+    }
+    out = dispatch("score_cdr_liabilities", args)
+    assert "liabilities" in out
+    assert "high_severity_count" in out

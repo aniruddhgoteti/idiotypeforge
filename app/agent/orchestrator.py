@@ -27,6 +27,14 @@ import click
 import ollama
 
 from app.agent.router import dispatch, gemma_tool_specs
+from app.verification import (
+    ArtifactStore,
+    CitationGate,
+    GateRunner,
+    MockModeGate,
+    ProvenanceGate,
+    ThresholdGate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +61,50 @@ class PatientInput:
     vh_sequence: str
     vl_sequence: str
     hla_alleles: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Provenance-aware tool dispatch
+# ---------------------------------------------------------------------------
+def dispatch_traced(
+    name: str,
+    args: dict[str, Any],
+    store: ArtifactStore,
+) -> dict[str, Any]:
+    """Wrap router.dispatch and record the call into the artifact store."""
+    output = dispatch(name, args)
+    store.record(tool_name=name, args=args, output=output)
+    return output
+
+
+# ---------------------------------------------------------------------------
+# Final verification stage
+# ---------------------------------------------------------------------------
+def verify_dossier(
+    dossier_markdown: str,
+    store: ArtifactStore,
+    abort_on: str = "error",
+) -> dict[str, Any]:
+    """Run the verification gate pipeline against the composed dossier.
+
+    Returns:
+        {
+            "passed": bool,
+            "audit_markdown": str,
+            "results": [GateResult.__dict__, ...],
+        }
+    """
+    runner = GateRunner(abort_on=abort_on)
+    overall, results = runner.run([
+        (MockModeGate(),     {"store": store}),
+        (CitationGate(),     {"dossier_markdown": dossier_markdown}),
+        (ProvenanceGate(),   {"dossier_markdown": dossier_markdown, "store": store}),
+    ])
+    return {
+        "passed": overall,
+        "audit_markdown": runner.report_markdown(results),
+        "results": [r.__dict__ for r in results],
+    }
 
 
 # ---------------------------------------------------------------------------
