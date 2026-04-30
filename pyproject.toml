@@ -1,0 +1,139 @@
+[project]
+name = "idiotypeforge"
+version = "0.1.0"
+description = "AI-designed personalized anti-idiotype therapy for B-cell lymphoma — Gemma 4 Good Hackathon submission."
+readme = "README.md"
+license = { text = "CC-BY-4.0" }
+requires-python = ">=3.11,<3.14"
+authors = [
+  { name = "IdiotypeForge contributors" },
+]
+keywords = [
+  "lymphoma", "idiotype", "antibody-design", "gemma", "alphafold",
+  "rfdiffusion", "proteinmpnn", "kaggle-hackathon",
+]
+
+# ---------------------------------------------------------------------------
+# Base dependencies — CPU-runnable. Everything in this list must work on a
+# laptop with no GPU. GPU-only deps live in optional extras below.
+# ---------------------------------------------------------------------------
+dependencies = [
+  # Sequence & antibody tooling (CPU)
+  "biopython>=1.83",
+  "anarci>=2024.05",                # antibody numbering (Kabat / IMGT)
+  # Note: ablang2 + igfold are imported lazily in the tool wrappers so the
+  # base install stays light; they're declared in the [igfold] extra below.
+
+  # MHC / immunogenicity
+  "mhcflurry>=2.1",                 # CPU-friendly inference
+
+  # Structure handling
+  "freesasa>=2.2.1",                # interface SASA on CPU
+
+  # Sequence search (off-target safety)
+  # mmseqs2 + blast are *system* binaries, not Python; documented in README.
+
+  # Embeddings / models (CPU + optional CUDA)
+  "torch>=2.3,<2.8",
+  "transformers>=4.45",
+  "tokenizers>=0.20",
+  "sentencepiece>=0.2.0",
+  "accelerate>=0.34",
+
+  # Calibration (reused pattern from stasis-1)
+  "scikit-learn>=1.4",
+  "scipy>=1.12",
+  "numpy>=1.26,<3.0",
+
+  # Agent + UI
+  "ollama>=0.4",                    # local Gemma 4 via Ollama HTTP
+  "gradio>=4.44",                   # demo UI
+  "pydantic>=2.7",
+  "rich>=13.7",                     # nice tool-call log rendering
+
+  # Plotting / dossier
+  "matplotlib>=3.8",
+  "Pillow>=10.3",
+  "weasyprint>=62.0",               # markdown → PDF dossier
+
+  # Misc
+  "tqdm>=4.66",
+  "python-dotenv>=1.0",
+  "click>=8.1",                     # CLI for run_local.sh / run_modal.py
+]
+
+[project.optional-dependencies]
+# IgFold for antibody Fv structure prediction. CPU-runnable but slow (~2-5 min).
+igfold = [
+  "igfold>=0.4.0",
+  "ablang2>=0.3.0",
+]
+
+# Inverse-folding sequence design. CPU-runnable.
+proteinmpnn = [
+  # ProteinMPNN is shipped as a script, not a pip package, in the upstream
+  # repo. We vendor it under app/tools/_proteinmpnn/ — no pip dep required.
+]
+
+# GPU-only stack — only install on GCP A100 spot (Days 13–14).
+gpu = [
+  "unsloth>=2024.10",               # QLoRA fine-tune of Gemma 4 E4B
+  "bitsandbytes>=0.43",             # 4-bit quant
+  "peft>=0.13",
+  "datasets>=3.0",
+  # RFdiffusion is installed from source (BSD-3); see scripts/install_rfdiffusion.sh
+  # AlphaFold-Multimer via colabfold-batch — system binary, see install script.
+]
+
+# Demo deployment
+deploy = [
+  "huggingface_hub>=0.25",
+  "spaces>=0.30",                   # ZeroGPU decorators
+]
+
+# Dev / test
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.6",
+  "ipykernel>=6.29",
+  "jupyter>=1.0",
+]
+
+[project.scripts]
+idiotypeforge = "app.agent.orchestrator:cli"
+
+[project.urls]
+Homepage = "https://github.com/USERNAME/idiotypeforge"
+Repository = "https://github.com/USERNAME/idiotypeforge"
+"Hackathon" = "https://www.kaggle.com/competitions/gemma-4-good-hackathon"
+
+# ---------------------------------------------------------------------------
+# Build system
+# ---------------------------------------------------------------------------
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+# ---------------------------------------------------------------------------
+# Tool config
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "RUF"]
+ignore = ["E501"]                   # we manage line length softly
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+markers = [
+  "gpu: requires CUDA GPU (skipped by default in local CPU runs)",
+  "slow: long-running tests (e.g. real IgFold on CPU)",
+  "integration: full end-to-end pipeline test",
+]

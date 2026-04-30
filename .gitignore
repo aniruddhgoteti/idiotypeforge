@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+.env
+.envrc
+
+# uv
+.uv-cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Model weights (too large for git; pull via scripts)
+*.pt
+*.pth
+*.bin
+*.safetensors
+weights/
+checkpoints/
+
+# Heavy data (pull via scripts/download_*.py)
+data/oas/
+data/uniprot/
+data/sabdab/
+*.fasta.gz
+*.tsv.gz
+*.parquet
+
+# Allow demo case fixtures (small, redistributable)
+!data/demo_cases/*.fasta
+
+# Pipeline artifacts
+runs/
+outputs/
+logs/
+*.log
+*.pdb.gz
+
+# Allow precomputed demo fixtures
+!data/demo_cases/**/*.pdb
+!data/demo_cases/**/*.png
+!data/demo_cases/**/*.json
+
+# Secrets (none should ever be committed)
+.gcp-key.json
+*.pem
+*.key
+secrets/
+
+# Modal / cloud caches
+.modal/
+.cache/
+
+# OS
+Thumbs.db
