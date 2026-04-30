@@ -229,8 +229,14 @@ class ThresholdGate(Gate):
 # ---------------------------------------------------------------------------
 # Match a numeric token: integers, decimals, optional sign, optional unit suffix
 # we strip before lookup ("%", "Å", "nM", "kcal").
+#
+# Negative lookbehind excludes:
+#   \w  — alphanumerics / underscore (don't slice tokens like "v3-21")
+#   .   — decimal continuations
+#   *   — HLA-allele star markers (HLA-A*02:01 → don't match the "02")
+#   :   — colon-separated identifiers (the "01" in "02:01"; clock times)
 _NUMBER_TOKEN = re.compile(
-    r"(?<![\w.])(?P<num>-?\d+(?:[.,]\d+)?)(?:\s*(?:%|Å|nM|µM|kcal|kDa|aa|Da|h|hrs?))?"
+    r"(?<![\w.*:])(?P<num>-?\d+(?:[.,]\d+)?)(?:\s*(?:%|Å|nM|µM|kcal|kDa|aa|Da|h|hrs?))?"
 )
 
 # Numbers we ignore as not requiring provenance (years, list indices, formulae).

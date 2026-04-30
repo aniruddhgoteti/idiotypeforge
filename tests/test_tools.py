@@ -113,28 +113,15 @@ def test_car_assembler_rejects_bad_format() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Remaining stub tools — confirm they error gracefully (so the router surface
-# is testable). number_antibody / igfold_predict / score_cdr_liabilities are
-# now implemented; their dedicated test files cover them.
+# Remaining stub tools — confirm they error gracefully.
+# offtarget_search is the last unimplemented tool; it ships with the
+# data-download scripts (scripts/download_oas.py + scripts/download_uniprot.py)
+# but the tool itself becomes useful only after those run.
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize(
     "tool, args",
     [
-        ("predict_mhc_epitopes", {
-            "cdr3_h_aa": "ARDYYGSSYWYFDV",
-            "cdr3_l_aa": "QQRSNWPPLT",
-            "hla_alleles": ["HLA-A*02:01"],
-        }),
         ("offtarget_search", {"query_sequence": "ARDYYGSSYWYFDV"}),
-        ("render_structure", {"pdb_text": "REMARK\nEND"}),
-        ("compose_dossier", {
-            "patient_id": "demo",
-            "bcr_summary": {},
-            "top_mrna_peptides": [],
-            "top_binders": [],
-            "car_construct": {},
-            "off_target_report": {},
-        }),
     ],
 )
 def test_stubs_return_structured_error(tool: str, args: dict) -> None:
