@@ -90,7 +90,7 @@ A real clinician would still review and approve everything. This is a **research
 
 > The full editable source is in [`docs/architecture.excalidraw`](docs/architecture.excalidraw). To tweak it, drop the file into [excalidraw.com](https://excalidraw.com) (or use the Excalidraw VS Code extension), edit, and re-export to `docs/architecture.png` and `docs/architecture.svg`.
 
-The patient's BCR enters at the top. Gemma 4 (the orange box) reads it and decides which of the nine deterministic tools (blue) to call in what order. Every tool output passes through five verification gates (red) — including the **ProvenanceGate** that catches any hallucinated number — before reaching the final dossier (green) and the four downstream deliverables (purple).
+The patient's BCR enters at the top. Gemma 4 (the orange box) reads it and decides which of the ten deterministic tools (blue) to call in what order. Every tool output passes through five verification gates (red) — including the **ProvenanceGate** that catches any hallucinated number — before reaching the final dossier (green) and the four downstream deliverables (purple).
 
 Every box on that diagram is open-source software. The whole thing runs on your machine with `ollama pull gemma:4e4b`. Patient sequences never leave your laptop.
 
@@ -101,7 +101,7 @@ Every box on that diagram is open-source software. The whole thing runs on your 
 | Feature | Why it matters here |
 |---|---|
 | **Open weights** | Hospitals can run it on-prem behind their firewall. Patient sequences are PHI. Closed APIs (GPT-4, Claude) can't be deployed on-prem under HIPAA. |
-| **Native function calling** | The agent calls 9 deterministic scientific tools (IgFold, RFdiffusion, etc.) without fragile glue code. |
+| **Native function calling** | The agent calls 10 deterministic scientific tools (IgFold, RFdiffusion, etc.) without fragile glue code. |
 | **Multimodal vision** | Gemma 4 looks at rendered 3D structures of the antibody and reasons about which surface loops are accessible to design against. |
 | **Long context** | Tool outputs add up to ~30–80 K tokens; Gemma 4 stitches them into one coherent dossier. |
 | **Fine-tunable** | We trained a small LoRA adapter on 200 K antibody sequences from the Observed Antibody Space, giving Gemma 4 antibody-specific intuition. |
@@ -169,7 +169,7 @@ See `docs/PUSH_TO_GITHUB.md` for a longer walkthrough.
 A working metaphor first: think of IdiotypeForge as a **molecular kitchen** for designing personalised lymphoma therapies.
 
 - **The head chef (`app/agent/`)** — Gemma 4. Reads the order, decides which sub-tasks to do in what order, calls the right specialist for each, then writes up the final report.
-- **The specialist sous-chefs (`app/tools/`)** — nine deterministic scientific tools. Each does exactly one technical job and never invents anything.
+- **The specialist sous-chefs (`app/tools/`)** — ten deterministic scientific tools. Each does exactly one technical job and never invents anything.
 - **The food-safety inspector (`app/verification/`)** — five gates that check the chef didn't fabricate any numbers, didn't cite imaginary papers, and met every quality threshold.
 - **The recipe book (`data/`)** — the only references the chef is allowed to cite from.
 - **The serving counter (`app/ui/`)** — a dashboard a clinician can actually use.
@@ -183,13 +183,13 @@ Now the modules in detail.
 This is the only "AI" part of the system. Everything else is deterministic Python.
 
 - **`orchestrator.py`** — the main loop. Receives a patient BCR, calls tools in sequence, streams events ("calling X", "got Y back") so a watcher can see the agent thinking.
-- **`router.py`** — registers the nine tools so Gemma 4 can call them via native function calling. Translates between the LLM's tool-call format and our actual Python functions.
+- **`router.py`** — registers the ten tools so Gemma 4 can call them via native function calling. Translates between the LLM's tool-call format and our actual Python functions.
 - **`prompts/system.md`** — the standing orders Gemma 4 reads first ("you are IdiotypeForge, here's the pipeline, here are the rules, **never invent numbers**").
 - **`prompts/dossier.md`** — the recipe for composing the final report.
 
 **Why it matters:** the agent's job is to *compose the workflow* intelligently. It's *forbidden* from inventing science. Every scientific number comes from a tool call.
 
-### `app/tools/` — nine specialist sous-chefs
+### `app/tools/` — ten specialist sous-chefs
 
 Each tool does one job, returns structured JSON, is fully testable, and is the **only** way numbers enter the dossier.
 
@@ -204,6 +204,7 @@ Each tool does one job, returns structured JSON, is fully testable, and is the *
 | `offtarget_search.py` | Searches **OAS** (~2 B normal antibodies) + **UniProt** (human proteome) for cross-reactivity | The single most important safety check: don't accidentally hit healthy cells. |
 | `car_assembler.py` | Builds a complete 4-1BBz CAR-T construct from the chosen scFv | Connects the new binder to the proven CAR-T architecture (the same one used in tisagenlecleucel). |
 | `render_structure.py` | Headless 3D renders of the antibody and binder for Gemma 4 to "look at" | Lets the agent reason about geometry, not just sequence. |
+| `dose_estimator.py` | Patient-specific starting doses for mRNA, bispecific, and CAR-T modalities, traceable to published Phase I/II trials | Closes the gap from "design" to "what would you actually inject?" — without inventing dosing science. |
 | `compose_dossier.py` | Stitches all artifacts into the final patient-ready report | The end product. A clinician reads this. |
 
 Two of these tools (`rfdiffusion_design`, `rescore_complex`) need GPUs for real runs. They ship with **deterministic mocks** (`app/tools/_mocks.py`) for laptop testing — same input gives same output, calibrated against published RFdiffusion success-rate distributions so the pipeline downstream looks realistic.
@@ -283,7 +284,7 @@ Files:
 ```
 app/
   agent/             Gemma 4 orchestrator + tool router + prompts
-  tools/             9 deterministic tools (CPU + 2 GPU-mockable)
+  tools/             10 deterministic tools (CPU + 2 GPU-mockable)
   verification/      5 gates: schema, mock, threshold, provenance, citation
   calibration/       IsotonicRegression confidence wrapper
   ui/                Gradio dashboard + decision cards + saliency

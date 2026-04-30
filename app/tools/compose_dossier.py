@@ -46,6 +46,10 @@ SCHEMA = {
                 "description": "{view_name: png_b64} for multimodal grounding.",
             },
             "liabilities_report": {"type": "object"},
+            "doses": {
+                "type": "object",
+                "description": "dose_estimator output: starting doses per modality.",
+            },
         },
         "required": [
             "patient_id", "bcr_summary", "top_mrna_peptides", "top_binders",
@@ -67,6 +71,7 @@ def run(
     off_target_report: dict[str, Any],
     structure_renders: dict[str, str] | None = None,
     liabilities_report: dict[str, Any] | None = None,
+    doses: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the dossier markdown.
 
@@ -88,6 +93,7 @@ def run(
             off_target_report=off_target_report,
             structure_renders=structure_renders,
             liabilities_report=liabilities_report,
+            doses=doses,
         )
     return _compose_with_template(
         patient_id=patient_id,
@@ -97,6 +103,7 @@ def run(
         car_construct=car_construct,
         off_target_report=off_target_report,
         liabilities_report=liabilities_report,
+        doses=doses,
     )
 
 
@@ -111,9 +118,12 @@ def _compose_with_template(
     car_construct: dict[str, Any],
     off_target_report: dict[str, Any],
     liabilities_report: dict[str, Any] | None,
+    doses: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Render the dossier from a fixed template. No LLM, no invention."""
     citations = ["Schuster2011", "Maude2018", "Wang2013", "Watson2023", "Dauparas2022", "Olsen2022"]
+    if doses:
+        citations.extend(["Rojas2023", "Hutchings2021"])
 
     parts: list[str] = []
 
@@ -225,8 +235,52 @@ def _compose_with_template(
     )
     parts.append("")
 
-    # ---------- 7. Recommended sequencing ----------
-    parts.append("## 7. Recommended therapy sequencing")
+    # ---------- 6.5. Recommended starting doses ----------
+    if doses:
+        parts.append("## 7. Recommended starting doses")
+        parts.append("")
+        m = doses.get("mrna_vaccine") or {}
+        b = doses.get("bispecific_scfv") or {}
+        c = doses.get("car_t") or {}
+        parts.append(f"**Patient weight**: {doses.get('patient_weight_kg', 70):.0f} kg")
+        parts.append("")
+        parts.append("| modality | starting dose | route | schedule | reference |")
+        parts.append("|---|---|---|---|---|")
+        if m:
+            parts.append(
+                f"| {m.get('modality', '?')} | "
+                f"{m.get('total_per_dose_ug', 0):.0f} μg per dose "
+                f"({m.get('n_peptides', 0)} × {m.get('ug_per_peptide', 0):.0f} μg) | "
+                f"{m.get('route', '?')} | {m.get('schedule', '?')} | "
+                f"[{m.get('provenance', '')}] |"
+            )
+        if b:
+            parts.append(
+                f"| {b.get('modality', '?')} | "
+                f"{b.get('step_up_priming_mg', 0):.2f} → "
+                f"{b.get('step_up_intermediate_mg', 0):.2f} → "
+                f"{b.get('full_dose_mg', 0):.0f} mg step-up | "
+                f"{b.get('route', '?')} | {b.get('schedule', '?')} | "
+                f"[{b.get('provenance', '')}] |"
+            )
+        if c:
+            parts.append(
+                f"| {c.get('modality', '?')} | "
+                f"{c.get('target_cell_dose', 0):.1e} CAR+ T-cells | "
+                f"{c.get('route', '?')} | {c.get('schedule', '?')} | "
+                f"[{c.get('provenance', '')}] |"
+            )
+        parts.append("")
+        parts.append(
+            "These are *starting* dose templates derived from published Phase I/II "
+            "trials of analogous personalised therapies — not a clinical "
+            "recommendation. A real first-in-human dose-escalation study remains "
+            "required for any in-house designed binder."
+        )
+        parts.append("")
+
+    # ---------- 8. Recommended sequencing ----------
+    parts.append("## 8. Recommended therapy sequencing")
     parts.append(
         "When clinically appropriate (e.g. CLL or MCL), bridge the patient on a BTK "
         "inhibitor [Wang2013] while the personalized therapy is manufactured. "
@@ -238,8 +292,8 @@ def _compose_with_template(
     )
     parts.append("")
 
-    # ---------- 8. Limitations ----------
-    parts.append("## 8. Limitations")
+    # ---------- 9. Limitations ----------
+    parts.append("## 9. Limitations")
     parts.append(
         "- Computational design only — every candidate must be validated by binding "
         "assays, expression QC, and in vivo studies before any clinical interpretation.\n"
@@ -282,6 +336,7 @@ def _compose_with_gemma(
     off_target_report: dict[str, Any],
     structure_renders: dict[str, str] | None,
     liabilities_report: dict[str, Any] | None,
+    doses: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Use Gemma 4 via Ollama. Falls back to template mode on any failure."""
     # Day-7 implementation will:
@@ -298,6 +353,7 @@ def _compose_with_gemma(
         car_construct=car_construct,
         off_target_report=off_target_report,
         liabilities_report=liabilities_report,
+        doses=doses,
     )
     out["mode"] = "template_fallback_for_gemma"
     return out

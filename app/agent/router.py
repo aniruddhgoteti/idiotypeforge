@@ -18,6 +18,7 @@ from app.tools import (
     car_assembler,
     cdr_liabilities,
     compose_dossier,
+    dose_estimator,
     igfold_predict,
     mhcflurry_predict,
     number_antibody,
@@ -43,6 +44,7 @@ _TOOLS: dict[str, tuple[Callable[..., Any], dict[str, Any]]] = {
     "offtarget_search":     (offtarget_search.run,     offtarget_search.SCHEMA),
     "assemble_car_construct":(car_assembler.run,       car_assembler.SCHEMA),
     "render_structure":     (render_structure.run,     render_structure.SCHEMA),
+    "estimate_doses":       (dose_estimator.run,       dose_estimator.SCHEMA),
     "compose_dossier":      (compose_dossier.run,      compose_dossier.SCHEMA),
 }
 

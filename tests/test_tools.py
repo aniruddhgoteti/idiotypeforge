@@ -29,6 +29,7 @@ def test_router_lists_all_tools() -> None:
         "offtarget_search",
         "assemble_car_construct",
         "render_structure",
+        "estimate_doses",
         "compose_dossier",
     }
     assert set(list_tools()) == expected

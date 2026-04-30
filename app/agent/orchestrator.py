@@ -78,6 +78,7 @@ class PatientInput:
     vh_sequence: str
     vl_sequence: str
     hla_alleles: list[str]
+    weight_kg: float = 70.0           # default adult; passed into dose_estimator
 
 
 # ---------------------------------------------------------------------------
@@ -291,8 +292,20 @@ def _run_template(patient: PatientInput) -> Iterator[AgentEvent]:
     else:
         car = {"format": "4-1BBz", "full_aa_sequence": "", "components": {}}
 
-    # ---------- Step 9: compose dossier ----------
-    yield AgentEvent("thought", "Step 9/9: composing therapy dossier.")
+    # ---------- Step 9: estimate patient-specific starting doses ----------
+    yield AgentEvent("thought", "Step 9/10: estimating patient-specific starting doses.")
+    args = {
+        "n_mrna_peptides": min(3, len(top_peptides)),
+        "patient_weight_kg": patient.weight_kg,
+        "binder_iplddt": rescored[0]["iplddt"] if rescored else None,
+    }
+    yield AgentEvent("tool_call", {"name": "estimate_doses", "args": args,
+                                   "rationale": "translate the designs into an injectable starting dose."})
+    doses = dispatch_traced("estimate_doses", args, store)
+    yield AgentEvent("tool_result", {"name": "estimate_doses", "result": _summarise(doses)})
+
+    # ---------- Step 10: compose dossier ----------
+    yield AgentEvent("thought", "Step 10/10: composing therapy dossier.")
     bcr_summary = {
         "vh_v_gene": vh_num.get("v_gene"),
         "vh_j_gene": vh_num.get("j_gene"),
@@ -307,6 +320,7 @@ def _run_template(patient: PatientInput) -> Iterator[AgentEvent]:
         "car_construct": car,
         "off_target_report": offtarget,
         "liabilities_report": liab if "error" not in liab else None,
+        "doses": doses if "error" not in doses else None,
     }
     yield AgentEvent("tool_call", {"name": "compose_dossier", "args": "<all_artifacts>",
                                    "rationale": "stitch into clinician-readable report."})

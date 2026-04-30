@@ -187,6 +187,7 @@ def test_template_mode_emits_a_tool_call_for_each_pipeline_step(monkeypatch: pyt
         "rescore_complex",
         "offtarget_search",
         "assemble_car_construct",
+        "estimate_doses",
         "compose_dossier",
     }
     assert expected.issubset(set(tool_call_names))
