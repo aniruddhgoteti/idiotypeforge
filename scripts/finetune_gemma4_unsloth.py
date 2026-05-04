@@ -66,6 +66,15 @@ import click
 @click.option("--push-to-hub/--no-push", default=False)
 @click.option("--hub-id", default=None,
               help="HF Hub repo id (e.g. user/idiotypeforge-gemma4-e4b-ab-lora).")
+@click.option("--benchmark-only", is_flag=True, default=False,
+              help="Skip training; only run the CDR3-masked-AA top-1 accuracy "
+                   "benchmark on the (optionally LoRA-adapted) base model.")
+@click.option("--lora-adapter", default=None,
+              type=click.Path(exists=True, file_okay=False),
+              help="Path to a saved LoRA adapter dir. When set with "
+                   "--benchmark-only, evaluates the fine-tuned model.")
+@click.option("--n-bench-seqs", type=int, default=500,
+              help="How many held-out sequences to score in the CDR3 benchmark.")
 def main(
     base_model: str,
     train_fasta: str,
@@ -82,6 +91,9 @@ def main(
     max_sequences: int,
     push_to_hub: bool,
     hub_id: str | None,
+    benchmark_only: bool,
+    lora_adapter: str | None,
+    n_bench_seqs: int,
 ) -> None:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -132,7 +144,12 @@ def main(
 
     # Wrap each sequence in <antibody> sentinels — gives the model a clear
     # signal that this is antibody language vs. arbitrary protein text.
-    formatted = [{"text": f"<antibody>\n{s}\n</antibody>"} for s in sequences]
+    # The "raw" field is consumed by the CDR3 masked-AA benchmark (it needs
+    # the unwrapped sequence for ANARCI numbering); SFTTrainer's
+    # `dataset_text_field="text"` ignores the extra column.
+    formatted = [
+        {"text": f"<antibody>\n{s}\n</antibody>", "raw": s} for s in sequences
+    ]
 
     # 95/5 split
     n_eval = max(200, len(formatted) // 20)
@@ -152,6 +169,32 @@ def main(
         load_in_4bit=True,
         dtype=None,
     )
+
+    if benchmark_only:
+        # Benchmark-only path: optionally load a saved LoRA adapter on top of
+        # the base, run the CDR3 masked-AA top-1 benchmark, write
+        # baseline_metrics.json, and exit. Used to capture both the base
+        # baseline (~25%) and the fine-tuned number (≥50%) in separate runs.
+        if lora_adapter:
+            from peft import PeftModel              # type: ignore[import-not-found]
+            click.echo(f"→ Loading LoRA adapter from {lora_adapter}")
+            model = PeftModel.from_pretrained(model, lora_adapter)
+        FastLanguageModel.for_inference(model)
+        from app.eval.cdr3_masked import compute_cdr3_masked_top1
+        click.echo(f"→ Running CDR3-masked-AA benchmark on {n_bench_seqs} sequences…")
+        bench = compute_cdr3_masked_top1(
+            model=model, tokenizer=tokenizer, eval_records=eval_records,
+            n_seqs=n_bench_seqs,
+        )
+        bench_payload = {
+            "base_model": base_model,
+            "lora_adapter": lora_adapter,
+            **bench,
+        }
+        (out / "baseline_metrics.json").write_text(json.dumps(bench_payload, indent=2))
+        click.echo(f"  · {bench_payload}")
+        click.echo(f"✓ Benchmark-only complete: {out / 'baseline_metrics.json'}")
+        return
 
     click.echo(f"→ Attaching LoRA (r={lora_r}, alpha={lora_alpha})…")
     model = FastLanguageModel.get_peft_model(
@@ -219,6 +262,17 @@ def main(
     eval_loss = float(eval_result.get("eval_loss", float("nan")))
     perplexity = float(torch.exp(torch.tensor(eval_loss)).item()) if eval_loss == eval_loss else float("nan")
 
+    # Inline CDR3-masked-AA top-1 benchmark — pairs naturally with perplexity
+    # to claim the plan's "≥50% vs ~25% base" threshold. Runs ~5 min on A100
+    # at n_bench_seqs=500.
+    click.echo(f"→ Running CDR3-masked-AA benchmark on {n_bench_seqs} sequences…")
+    FastLanguageModel.for_inference(model)
+    from app.eval.cdr3_masked import compute_cdr3_masked_top1
+    bench = compute_cdr3_masked_top1(
+        model=model, tokenizer=tokenizer, eval_records=eval_records,
+        n_seqs=n_bench_seqs,
+    )
+
     metrics = {
         "base_model": base_model,
         "epochs": epochs,
@@ -230,6 +284,9 @@ def main(
         "lora_rank": lora_r,
         "lora_alpha": lora_alpha,
         "seq_len": seq_len,
+        "cdr3_masked_top1_accuracy": bench["top1_accuracy"],
+        "cdr3_masked_n_positions": bench["n_positions"],
+        "cdr3_masked_n_anarci_failures": bench["n_anarci_failures"],
     }
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2))
     click.echo(f"  · {metrics}")

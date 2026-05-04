@@ -24,6 +24,7 @@ import gradio as gr
 
 from app.agent.orchestrator import PatientInput, run_agent
 from app.ui.decision_card import render_card
+from app.ui.saliency import compute_saliency_card
 
 DEMO_DIR = Path(__file__).parent.parent.parent / "data" / "demo_cases"
 
@@ -249,6 +250,21 @@ def build_app() -> gr.Blocks:
 
                     with gr.Tab("📋  Therapy dossier"):
                         dossier = gr.Markdown(value="_The full markdown dossier will render here._")
+
+                    with gr.Tab("🧬  Saliency"):
+                        saliency_md = gr.Markdown(
+                            value=(
+                                "_Click **Compute saliency** to extract the CDR3-H "
+                                "attention rollup from AbLang2 for the currently-loaded "
+                                "VH sequence._"
+                            )
+                        )
+                        saliency_btn = gr.Button("Compute saliency", size="sm")
+                        saliency_btn.click(
+                            fn=compute_saliency_card,
+                            inputs=[vh, vl],
+                            outputs=[saliency_md],
+                        )
 
         run_btn.click(
             fn=run_pipeline,

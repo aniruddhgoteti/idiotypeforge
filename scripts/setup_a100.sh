@@ -30,7 +30,9 @@ err()  { echo -e "${RED}✗${RESET} $*" >&2; }
 # ---------------------------------------------------------------------------
 step "Verifying GPU…"
 if command -v nvidia-smi >/dev/null 2>&1; then
-  nvidia-smi | head -3
+  # `nvidia-smi -L` is short-output; piping `nvidia-smi | head -3` triggers
+  # SIGPIPE under `set -euo pipefail` and kills the script before driver init.
+  nvidia-smi -L || true
 else
   err "nvidia-smi missing. Use the deeplearning-platform-release pytorch-latest-gpu image."
   exit 1
@@ -65,8 +67,12 @@ fi
 cd "$HOME/idiotypeforge"
 git pull --quiet || true
 
-step "Syncing Python env (base + gpu + igfold extras)…"
-uv sync --extra gpu --extra igfold
+step "Syncing Python env (base + gpu extra)…"
+# NOTE: `--extra igfold` is intentionally omitted here. ablang2>=0.3.0 has
+# no Python 3.13 wheel, and the Deep Learning VM ships 3.13 by default; the
+# GPU workload (fixtures, finetune) only needs the `gpu` extra. IgFold /
+# AbLang2 are CPU-side UI features.
+uv sync --extra gpu
 source .venv/bin/activate
 ok "Env: $(python --version)"
 

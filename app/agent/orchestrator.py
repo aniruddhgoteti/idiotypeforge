@@ -409,6 +409,8 @@ def _run_gemma(
                 yield AgentEvent("thought", "Gemma 4 produced final response.")
                 audit = verify_dossier(dossier_markdown=final_text, store=store)
                 yield AgentEvent("verification", audit)
+                if not audit["passed"]:
+                    final_text = _prepend_gate_failure_banner(final_text, audit)
                 yield AgentEvent("final", {
                     "patient_id": patient.patient_id,
                     "mode": "gemma",
@@ -447,6 +449,42 @@ def _run_gemma(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+def _prepend_gate_failure_banner(dossier_markdown: str, audit: dict[str, Any]) -> str:
+    """Add a visible banner at the top of a dossier whose gates failed.
+
+    Walks the per-gate audit results and pulls out the most actionable
+    counters (unmatched numbers from ProvenanceGate, unknown citations from
+    CitationGate) so the reader of the rendered dossier sees *what* failed,
+    not just that something did.
+    """
+    failed = [r for r in audit.get("results", []) if not r.get("passed", False)]
+    parts: list[str] = []
+    for r in failed:
+        details = r.get("details", {}) or {}
+        gate = r.get("gate_name", "gate")
+        if gate == "ProvenanceGate":
+            n = details.get("unmatched_count")
+            extra = f" ({n} unmatched numeric token(s))" if n is not None else ""
+            parts.append(f"`ProvenanceGate`{extra}")
+        elif gate == "CitationGate":
+            unknown = details.get("unknown_keys") or []
+            if unknown:
+                shown = ", ".join(unknown[:3]) + ("…" if len(unknown) > 3 else "")
+                parts.append(f"`CitationGate` ({len(unknown)} unresolved: {shown})")
+            else:
+                parts.append("`CitationGate`")
+        else:
+            parts.append(f"`{gate}`")
+    summary = "; ".join(parts) if parts else "one or more gates"
+    banner = (
+        f"> ⚠️ **Gemma 4 output failed verification** — {summary}. "
+        "The dossier below is shown as Gemma produced it; numeric or citation "
+        "claims marked here may be hallucinated. Re-run in template mode for a "
+        "deterministic, gate-clean alternative.\n\n"
+    )
+    return banner + dossier_markdown
+
+
 def _summarise(payload: Any, max_chars: int = 400) -> str:
     """One-line preview of a tool output for the UI log."""
     s = json.dumps(payload, default=str)
