@@ -34,10 +34,13 @@ dependencies = [
   # mmseqs2 + blast are *system* binaries, not Python; documented in README.
 
   # Embeddings / models (CPU + optional CUDA)
-  # Need PyTorch ≥2.5 for Python 3.13 wheels (torchvision 0.20.1 — pulled
-  # in transitively by torch 2.4.x — has no 3.13 wheel). The GCP DLVM
-  # image ships torch 2.9 pre-installed; uv will reuse it.
+  # Need PyTorch ≥2.5 for Python 3.13 wheels. The GCP DLVM image ships
+  # torch 2.9 pre-installed; uv will reuse it.
   "torch>=2.5",
+  # torchvision 0.20.1 (Oct 2024) is the *one* version missing cp313 wheels
+  # (a release-pipeline glitch); 0.20.0 had them, 0.21+ have them. unsloth's
+  # transitive resolver liked to land on 0.20.1, so pin it out explicitly.
+  "torchvision>=0.21",
   "transformers>=4.45",
   "tokenizers>=0.20",
   "sentencepiece>=0.2.0",
