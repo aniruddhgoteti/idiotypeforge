@@ -87,19 +87,30 @@ cd "$HOME/RFdiffusion"
 mkdir -p models
 cd models
 
-# Download model weights if missing (from Baker Lab IPD CDN)
+# Download model weights if missing. Only the two ckpts the binder-design
+# pipeline actually needs (Base_ckpt.pt for monomers, Complex_base_ckpt.pt
+# for protein-protein interfaces). The other RFdiffusion ckpts (Complex_Fold,
+# Complex_beta, InpaintSeq, ActiveSite) are for use cases we don't exercise.
+# URLs are from the official RFdiffusion README.
 declare -A RFD_WEIGHTS=(
   ["Base_ckpt.pt"]="http://files.ipd.uw.edu/pub/RFdiffusion/6f5902ac237024bdd0c176cb93063dc4/Base_ckpt.pt"
   ["Complex_base_ckpt.pt"]="http://files.ipd.uw.edu/pub/RFdiffusion/e29311f6f1bf1af907f9ef9f44b8328b/Complex_base_ckpt.pt"
-  ["Complex_beta_ckpt.pt"]="http://files.ipd.uw.edu/pub/RFdiffusion/f572d396fae9206628714fb2ce00f72e/Complex_beta_ckpt.pt"
-  ["Complex_Fold_base_ckpt.pt"]="http://files.ipd.uw.edu/pub/RFdiffusion/12fc204edeae5b57713c5d7adbb5f4dc/Complex_Fold_base_ckpt.pt"
 )
 for fname in "${!RFD_WEIGHTS[@]}"; do
   if [ ! -f "$fname" ]; then
-    step "  · downloading $fname"
-    wget -q "${RFD_WEIGHTS[$fname]}"
+    step "  · downloading $fname (~750 MB)"
+    # `|| warn` so a single download hiccup doesn't kill the whole setup
+    # under `set -euo pipefail`. We verify presence right after.
+    wget --timeout=60 --tries=3 -q "${RFD_WEIGHTS[$fname]}" \
+      || warn "    ↳ wget failed for $fname; will retry once"
+    if [ ! -f "$fname" ]; then
+      wget --timeout=60 --tries=3 -q "${RFD_WEIGHTS[$fname]}" \
+        || err "    ↳ wget failed twice for $fname"
+    fi
   fi
 done
+[ -f "Base_ckpt.pt" ] && [ -f "Complex_base_ckpt.pt" ] \
+  || { err "RFdiffusion weight downloads failed"; exit 1; }
 ok "RFdiffusion weights ready"
 
 cd "$HOME/RFdiffusion"
