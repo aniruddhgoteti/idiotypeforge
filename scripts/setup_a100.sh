@@ -140,9 +140,12 @@ ok "colabfold_batch on PATH"
 # ---------------------------------------------------------------------------
 # 6. Unsloth + fine-tuning stack
 # ---------------------------------------------------------------------------
-step "Installing Unsloth + bitsandbytes + peft + trl…"
-pip install -q "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"
-pip install -q bitsandbytes peft trl datasets accelerate
+# These were already installed by `uv sync --extra gpu` above (see the
+# `[project.optional-dependencies].gpu` section of pyproject.toml). No
+# further pip install needed; we just verify presence.
+step "Verifying Unsloth + fine-tuning stack…"
+python -c "import unsloth, bitsandbytes, peft, trl, datasets, accelerate; print(f'  unsloth={unsloth.__version__}')" \
+  || { err "Unsloth stack import failed"; exit 1; }
 ok "Unsloth ready"
 
 # ---------------------------------------------------------------------------
