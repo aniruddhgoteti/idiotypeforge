@@ -65,8 +65,13 @@ dependencies = [
 [project.optional-dependencies]
 # IgFold for antibody Fv structure prediction. CPU-runnable but slow (~2-5 min).
 igfold = [
-  "igfold>=0.4.0",
-  "ablang2>=0.3.0",
+  # IgFold + AbLang2 are CPU-side UI features (the laptop saliency tab).
+  # Neither is needed on the GPU VM, which uses `--extra gpu` only.
+  # Both packages currently require Python ≤3.12, so we mark them so
+  # Python 3.13 environments (the GCP DLVM default) can still lock-and-sync
+  # the rest of the project — uv simply skips these on 3.13.
+  "igfold>=0.4.0 ; python_version < '3.13'",
+  "ablang2>=0.2.0 ; python_version < '3.13'",
 ]
 
 # Inverse-folding sequence design. CPU-runnable.
