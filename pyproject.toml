@@ -41,7 +41,9 @@ dependencies = [
   # (a release-pipeline glitch); 0.20.0 had them, 0.21+ have them. unsloth's
   # transitive resolver liked to land on 0.20.1, so pin it out explicitly.
   "torchvision>=0.21",
-  "transformers>=4.45",
+  # Pin <5 — transformers 5.x removed/renamed `auto_docstring` which
+  # unsloth 2025.9.5 still imports at unsloth/models/_utils.py:448.
+  "transformers>=4.45,<5",
   "tokenizers>=0.20",
   "sentencepiece>=0.2.0",
   "accelerate>=0.34",
