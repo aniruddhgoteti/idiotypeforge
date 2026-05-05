@@ -195,6 +195,56 @@ idiotypeforge/
 
 ---
 
+## 5b. Bugs encountered + fixed during the 2026-05-04/05 GPU attempt
+
+The first GPU run uncovered **6 dependency-chain bugs** that all needed
+fixing before setup_a100.sh could complete. All fixes are committed to
+`main` (commits `6edb031`, `9473350`, `8b71159`, `1ca3007`, `702e208`,
+`53259ad`, `474c8c7`). If you're resuming, **the next setup_a100.sh run
+should sail straight through.** For posterity:
+
+1. **SIGPIPE in nvidia-smi pipe.** `nvidia-smi | head -3` under
+   `set -euo pipefail` triggers SIGPIPE → non-zero exit → script aborts.
+   *Fix:* `nvidia-smi -L || true` (commit `6edb031`).
+
+2. **`[igfold]` extra unsatisfiable on Python 3.13.** `ablang2>=0.3.0`
+   doesn't exist on PyPI (max is 0.2.1, no Python 3.13 wheel).
+   *Fix:* PEP 508 marker `python_version < '3.13'` so uv skips it on the
+   DLVM (commit `9473350`).
+
+3. **`.claude/worktrees/...` accidentally committed** as embedded git
+   repo. *Fix:* added `.claude/` to `.gitignore` (commit `9473350`).
+
+4. **`torch>=2.3,<2.8`** resolved to torch 2.4.x → torchvision 0.20.1,
+   the *one* torchvision release missing Python 3.13 wheels.
+   *Fix:* `torch>=2.5` + explicit `torchvision>=0.21` (commits `8b71159`,
+   `1ca3007`).
+
+5. **RFdiffusion weight URLs:** `Complex_Fold_base_ckpt.pt` had wrong
+   hash (it was `Base_epoch8_ckpt.pt`'s); `Complex_beta_ckpt.pt` had the
+   md5 of "foo" — placeholder leftover. wget 404 + `set -e` aborted.
+   *Fix:* Trim to the only two ckpts the binder pipeline needs
+   (`Base_ckpt.pt`, `Complex_base_ckpt.pt`), add retry with `|| warn`
+   (commit `702e208`).
+
+6. **Redundant Unsloth pip-install** with stale `unsloth[colab-new]`
+   extra (removed in modern Unsloth). uv sync had already installed
+   unsloth from the [gpu] extra; the duplicate pip call failed.
+   *Fix:* Replace with a Python presence-check (commit `53259ad`).
+
+7. **`transformers==5.7.0`** removed `auto_docstring` which
+   unsloth 2025.9.5 still imports. *Fix:* pin `transformers<5`
+   (commit `474c8c7`).
+
+**Total cost burned during debugging:** ~$1 (5 short-lived L4 spot
+sessions, all <40 min before the 6th attempt got preempted).
+**Total wallclock burned debugging:** ~3 hours of session time.
+
+The current commit (`474c8c7`) should bootstrap to a working VM in one
+shot. The next resumption only needs §6 below.
+
+---
+
 ## 6. Resuming the GPU phase later — exact commands
 
 The setup + workload scripts are pushed and ready. From a fresh chat:
