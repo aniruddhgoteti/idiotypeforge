@@ -92,7 +92,7 @@ A real clinician would still review and approve everything. This is a **research
 
 The patient's BCR enters at the top. Gemma 4 (the orange box) reads it and decides which of the ten deterministic tools (blue) to call in what order. Every tool output passes through five verification gates (red) — including the **ProvenanceGate** that catches any hallucinated number — before reaching the final dossier (green) and the four downstream deliverables (purple).
 
-Every box on that diagram is open-source software. The whole thing runs on your machine with `ollama pull gemma:4e4b`. Patient sequences never leave your laptop.
+Every box on that diagram is open-source software. The whole thing runs on your machine with `ollama pull gemma3:4b`. Patient sequences never leave your laptop.
 
 ---
 
@@ -122,7 +122,7 @@ cd idiotypeforge
 bash scripts/setup_local.sh
 
 # 3. Pull Gemma 4 (one-time, ~5 GB)
-ollama pull gemma:4e4b
+ollama pull gemma3:4b
 
 # 4. Launch the dashboard
 uv run python -m app.ui.gradio_app

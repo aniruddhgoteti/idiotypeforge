@@ -55,7 +55,13 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-DEFAULT_MODEL = os.environ.get("IDIOTYPEFORGE_GEMMA_MODEL", "gemma:4e4b")
+# Default Ollama model identifier. Gemma 4 (E2B/E4B/26B/31B) isn't yet
+# packaged on the Ollama hub as of 2026-05; gemma3:4b is the closest
+# available stand-in (same active-parameter scale as E4B). For the *real*
+# Gemma 4 E4B path, see notebooks/idiotypeforge_kaggle.ipynb which loads
+# the model via `kagglehub.model_download('google/gemma-4/transformers/e4b')`.
+# When Ollama publishes Gemma 4, set IDIOTYPEFORGE_GEMMA_MODEL=gemma4:e4b.
+DEFAULT_MODEL = os.environ.get("IDIOTYPEFORGE_GEMMA_MODEL", "gemma3:4b")
 MAX_AGENT_STEPS = int(os.environ.get("IDIOTYPEFORGE_MAX_STEPS", "20"))
 DEFAULT_AGENT_MODE = os.environ.get("IDIOTYPEFORGE_AGENT_MODE", "template")
 

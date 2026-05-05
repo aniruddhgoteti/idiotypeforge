@@ -245,6 +245,43 @@ shot. The next resumption only needs §6 below.
 
 ---
 
+## 5c. Strategy update (2026-05-05): pivot to Kaggle Notebooks
+
+After 6 GCP-spot bootstrap failures + capacity wipeouts on 2026-05-04,
+plus the discovery that **Ollama doesn't yet have Gemma 4** (only Gemma 3
+family — gemma3:1b/4b/12b/27b), the GPU strategy is now:
+
+| Path | Where | Cost | What it gets us |
+|---|---|---|---|
+| Local laptop | macOS / Linux + Ollama | $0 | Demo with `gemma3:4b` (stand-in for Gemma 4 E4B) — for video footage |
+| **Kaggle Notebook** | kaggle.com/code | **$0** (free P100/T4, 30 hr/wk) | Real Gemma 4 E4B + Unsloth QLoRA fine-tune |
+| GCP A100 spot | last resort | ~$8 | Same as above, but paid + preemptible |
+
+**The Kaggle Notebook is now the primary GPU asset.** It uses
+`kagglehub.model_download("google/gemma-4/transformers/e4b")` for native
+Gemma 4 access, runs the full IdiotypeForge pipeline with Gemma 4 in the
+loop, and (optionally) Unsloth-fine-tunes the LoRA adapter for the
+hackathon's Unsloth track ($10K).
+
+Files added in this pivot:
+
+  notebooks/idiotypeforge_kaggle.ipynb    The end-to-end Kaggle notebook.
+                                          Upload to kaggle.com, attach the
+                                          google/gemma-4/transformers/e4b
+                                          model, click Run All. ~3-5 hr.
+  scripts/run_local_gemma.sh              Laptop demo runner; checks Ollama,
+                                          pulls gemma3:4b if missing, sets
+                                          IDIOTYPEFORGE_AGENT_MODE=gemma +
+                                          IDIOTYPEFORGE_DOSSIER_MODE=gemma,
+                                          launches the Gradio dashboard.
+
+Code changes:
+
+  app/agent/orchestrator.py    DEFAULT_MODEL: gemma:4e4b → gemma3:4b
+  app/tools/compose_dossier.py same
+  scripts/run_local.sh         same
+  README.md                    same; clarifies the stand-in note
+
 ## 6. Resuming the GPU phase later — exact commands
 
 The setup + workload scripts are pushed and ready. From a fresh chat:

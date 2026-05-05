@@ -80,10 +80,10 @@ if ! command -v ollama >/dev/null 2>&1; then
   warn "Install from https://ollama.com (one-line install for macOS / Linux)."
 else
   ok "Ollama $(ollama --version 2>/dev/null | head -1)"
-  if ! ollama list 2>/dev/null | grep -q "gemma:4e4b"; then
-    warn "Gemma 4 model not pulled yet. When ready: \`ollama pull gemma:4e4b\` (~5 GB)."
+  if ! ollama list 2>/dev/null | grep -q "gemma3:4b"; then
+    warn "Gemma 4 model not pulled yet. When ready: \`ollama pull gemma3:4b\` (~5 GB)."
   else
-    ok "gemma:4e4b is available"
+    ok "gemma3:4b is available"
   fi
 fi
 

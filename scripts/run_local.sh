@@ -3,7 +3,7 @@
 #
 # Prereqs:
 #   - Ollama installed and running (https://ollama.com)
-#   - `ollama pull gemma:4e4b` (small Gemma 4 variant, ~5 GB)
+#   - `ollama pull gemma3:4b` (small Gemma 4 variant, ~5 GB)
 #   - `uv sync` to install Python deps
 #
 # This script runs the methodology validation path with mocks for the two
@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 
 # Mocks ON for local; flip to 0 only on Day 13+ on GCP A100.
 export IDIOTYPEFORGE_USE_MOCKS="${IDIOTYPEFORGE_USE_MOCKS:-1}"
-export IDIOTYPEFORGE_GEMMA_MODEL="${IDIOTYPEFORGE_GEMMA_MODEL:-gemma:4e4b}"
+export IDIOTYPEFORGE_GEMMA_MODEL="${IDIOTYPEFORGE_GEMMA_MODEL:-gemma3:4b}"
 
 echo "→ Verifying Ollama is reachable…"
 if ! curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1; then
@@ -24,9 +24,9 @@ if ! curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1; then
 fi
 
 echo "→ Verifying Gemma 4 model is pulled…"
-if ! ollama list | grep -q "gemma:4e4b"; then
-  echo "→ Pulling gemma:4e4b (one-time, ~5 GB)…"
-  ollama pull gemma:4e4b
+if ! ollama list | grep -q "gemma3:4b"; then
+  echo "→ Pulling gemma3:4b (one-time, ~5 GB)…"
+  ollama pull gemma3:4b
 fi
 
 echo "→ Running pipeline on FL demo case…"
